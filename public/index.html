@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ Auction Battle Royale</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        bg: '#0f172a',
+                        panel: '#1e293b',
+                        primary: '#3b82f6',
+                        success: '#22c55e',
+                        danger: '#ef4444',
+                        warn: '#eab308'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .glow-text {
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+
+        .scroll-hide::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- HEADER -->
+    <header
+        class="h-16 border-b border-slate-700 bg-slate-900/80 backdrop-blur flex items-center justify-between px-6 shrink-0">
+        <div class="flex items-center gap-2">
+            <div class="text-2xl">⚡</div>
+            <div class="font-bold text-lg tracking-tight">Auction<span class="text-blue-500">Royale</span></div>
+        </div>
+
+        <div class="flex gap-4 text-xs font-mono text-slate-400">
+            <div class="flex items-center gap-2 cursor-pointer hover:text-white" onclick="showDocs('ws')">
+                <div class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]" id="ws-status">
+                </div> WS
+            </div>
+            <div class="flex items-center gap-2 cursor-pointer hover:text-white" onclick="showDocs('mongo')">
+                <div class="w-2 h-2 rounded-full bg-green-500"></div> DB
+            </div>
+            <div class="flex items-center gap-2 cursor-pointer hover:text-white" onclick="showDocs('ticker')">
+                <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div> TICKER
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
+
+        <!-- LEFT: AUCTION STAGE -->
+        <section class="flex-1 flex flex-col p-6 gap-6 overflow-y-auto">
+
+            <!-- Hero Card -->
+            <div
+                class="flex flex-col items-center justify-center p-8 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 shadow-xl relative overflow-hidden">
+                <!-- Background Glow -->
+                <div
+                    class="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-blue-500/20 blur-[100px] rounded-full pointer-events-none">
+                </div>
+
+                <div class="z-10 text-center space-y-2 w-full">
+
+                    <!-- Top Badges Row -->
+                    <div class="flex justify-between items-start w-full mb-4">
+                        <div
+                            class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 border border-slate-600 text-xs font-mono text-slate-300">
+                            <span id="round-badge">ROUND 1 / 50</span>
+                            <span class="w-1 h-1 rounded-full bg-slate-500"></span>
+                            <span id="status-badge" class="text-green-400 font-bold">ACTIVE</span>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <span
+                                class="px-2 py-1 rounded bg-slate-800 border border-slate-600 text-[10px] text-slate-400 font-mono text-green-400 border-green-900/50 bg-green-900/10">ACID
+                                Transactions</span>
+                            <span
+                                class="px-2 py-1 rounded bg-slate-800 border border-slate-600 text-[10px] text-slate-400 font-mono">Fixed
+                                Duration</span>
+                            <span
+                                class="px-2 py-1 rounded bg-slate-800 border border-slate-600 text-[10px] text-slate-400 font-mono">Realtime
+                                Sync</span>
+                        </div>
+                    </div>
+
+                    <h1 id="auctionTitle"
+                        class="text-4xl md:text-5xl font-extrabold tracking-tight text-white glow-text">Waiting for
+                        Init...</h1>
+
+                    <div class="text-6xl font-mono font-bold text-white py-4" id="timer">--:--</div>
+
+                    <div class="flex items-baseline justify-center gap-2 text-slate-400">
+                        <span>Top Bid:</span>
+                        <span class="text-3xl font-bold text-green-400 font-mono">$<span
+                                id="currentPrice">0</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="grid grid-cols-3 gap-4">
+                <div class="glass p-4 rounded-xl flex flex-col items-center">
+                    <span class="text-xs text-slate-400 uppercase tracking-wider">Min to Win (Top 20)</span>
+                    <span class="text-xl font-mono font-bold text-yellow-400">$<span id="minWinPrice">0</span></span>
+                </div>
+                <div class="glass p-4 rounded-xl flex flex-col items-center">
+                    <span class="text-xs text-slate-400 uppercase tracking-wider">Participants</span>
+                    <span class="text-xl font-mono font-bold text-blue-400" id="participantCount">0 / 1000</span>
+                </div>
+                <div class="glass p-4 rounded-xl flex flex-col items-center">
+                    <span class="text-xs text-slate-400 uppercase tracking-wider">Min to Enter</span>
+                    <span class="text-xl font-mono font-bold text-slate-200">$<span id="minEntryPrice">0</span></span>
+                </div>
+            </div>
+
+            <!-- Action Bar -->
+            <div class="glass p-6 rounded-xl flex items-center gap-4 border-t-4 border-blue-500">
+                <div class="flex-1">
+                    <label class="text-xs text-slate-400 uppercase font-bold ml-1">Your Bid Amount</label>
+                    <input type="number" id="bidAmount"
+                        class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-3 text-2xl font-mono text-white focus:outline-none focus:border-blue-500 transition-colors"
+                        placeholder="0">
+                </div>
+                <button onclick="placeBid()"
+                    class="h-full px-8 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-lg shadow-blue-500/30 transition-all active:scale-95 text-xl">
+                    PLACE BID
+                </button>
+            </div>
+
+            <!-- Messages/Log -->
+            <div id="log"
+                class="flex-1 bg-black/50 rounded-xl p-4 font-mono text-xs text-slate-400 overflow-y-auto border border-slate-800 max-h-48">
+                <div class="border-l-2 border-slate-600 pl-2">System Ready.</div>
+            </div>
+
+        </section>
+
+        <!-- RIGHT: LEADERBOARD & USER -->
+        <aside class="w-96 bg-slate-900 border-l border-slate-700 flex flex-col">
+
+            <!-- User Profile -->
+            <div class="p-6 border-b border-slate-700 bg-slate-800/50">
+                <div class="mb-4">
+                    <label class="text-xs text-slate-500 uppercase font-bold">Select Active User</label>
+                    <select id="userSelect" onchange="updateUserContext()"
+                        class="w-full mt-1 bg-slate-950 border border-slate-600 text-slate-200 text-sm rounded px-3 py-2 cursor-pointer hover:border-blue-500 transition-colors">
+                        <option>Loading...</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <div class="text-xs text-slate-500">Balance</div>
+                        <div class="font-mono text-white font-bold">$<span id="balance">0</span></div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-500">Locked</div>
+                        <div class="font-mono text-yellow-500 font-bold">$<span id="locked">0</span></div>
+                    </div>
+                </div>
+
+                <!-- Personal Status -->
+                <div id="myStatus" class="p-3 rounded bg-slate-700 text-center text-sm font-bold text-slate-400">
+                    NOT PARTICIPATING
+                </div>
+            </div>
+
+
+            <!-- Simulation Config (New) -->
+            <div class="p-4 border-b border-slate-700 bg-slate-900/50">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-[10px] uppercase font-bold text-blue-400 tracking-wider">Simulation Control</span>
+                </div>
+                <div class="space-y-3 font-mono text-xs">
+                    <div class="flex items-center gap-2">
+                        <label class="text-slate-500 w-20">Duration (m)</label>
+                        <input type="number" id="simDuration" value="1"
+                            class="bg-slate-800 border border-slate-700 text-white px-2 py-1 w-full rounded focus:border-blue-500 outline-none">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-slate-500 w-20">Rounds</label>
+                        <input type="number" id="simRounds" value="10"
+                            class="bg-slate-800 border border-slate-700 text-white px-2 py-1 w-full rounded focus:border-blue-500 outline-none">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-slate-500 w-20">Min Step</label>
+                        <input type="number" id="simMinStep" value="50"
+                            class="bg-slate-800 border border-slate-700 text-white px-2 py-1 w-full rounded focus:border-blue-500 outline-none">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-slate-500 w-20">Reserve $</label>
+                        <input type="number" id="simReserve" value="500"
+                            class="bg-slate-800 border border-slate-700 text-white px-2 py-1 w-full rounded focus:border-blue-500 outline-none">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-slate-500 w-20">Sniping (m)</label>
+                        <input type="number" id="simSniping" value="1"
+                            class="bg-slate-800 border border-slate-700 text-white px-2 py-1 w-full rounded focus:border-blue-500 outline-none">
+                    </div>
+                    <button onclick="startSimulation()"
+                        class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded shadow-lg shadow-blue-500/20 transition-all active:scale-95">
+                        ► START LIVE SIM
+                    </button>
+                </div>
+            </div>
+
+            <!-- Diagnostics Panel (Restored) -->
+            <div class="p-4 border-b border-slate-700 bg-slate-900/50 opacity-75">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Backend
+                        Diagnostics</span>
+                </div>
+                <div class="space-y-1 font-mono text-xs">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">DB Engine</span>
+                        <span class="text-slate-300">Mongo 7.0 (WT)</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Consistency</span>
+                        <span class="text-green-500">Strong (Replica)</span>
+                    </div>
+                    <div class="flex justify-between cursor-help hover:bg-slate-800/50 p-0.5 rounded"
+                        onclick="showDocs('concurrency')">
+                        <span class="text-slate-500">Concurrency</span>
+                        <span class="text-blue-400 border-b border-dashed border-blue-500/50">Optimistic (Ver)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Leaderboard Tabs -->
+            <div class="flex border-b border-slate-700 font-bold text-xs">
+                <button class="flex-1 py-3 bg-slate-800 text-white border-b-2 border-blue-500">TOP 20 (WINNERS)</button>
+            </div>
+
+            <!-- Leaderboard List -->
+            <div class="flex-1 overflow-y-auto p-2 space-y-1" id="leaderboardList">
+                <!-- Items injected here -->
+                <div class="text-center text-slate-500 py-10 italic">No bids yet...</div>
+            </div>
+
+            <!-- Inventory / Bottom Actions -->
+            <div class="p-4 border-t border-slate-700 bg-slate-950">
+                <div class="mt-4">
+                    <div class="text-xs text-slate-500 uppercase font-bold mb-2">My Inventory</div>
+                    <div id="inventoryList" class="flex gap-2 overflow-x-auto pb-2">
+                        <!-- Items -->
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+
+    </main>
+
+    <!-- DOCS MODAL -->
+    <div id="docs-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+        <div
+            class="bg-slate-800 border border-slate-600 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl">
+            <div class="p-4 border-b border-slate-700 flex justify-between items-center">
+                <h2 id="docs-title" class="text-blue-400 font-bold text-lg">Documentation</h2>
+                <button onclick="closeDocs()"
+                    class="text-slate-400 hover:text-white text-2xl leading-none">&times;</button>
+            </div>
+            <div id="docs-content"
+                class="p-6 overflow-y-auto prose prose-invert prose-sm max-w-none text-slate-300 leading-relaxed whitespace-pre-wrap">
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const API = 'http://localhost:3000/api';
+        const socket = io();
+        let currentUser = null;
+        let currentAuction = null;
+
+        // --- Core Logic ---
+
+        async function startSimulation() {
+            const duration = parseFloat(document.getElementById('simDuration').value) || 1;
+            const rounds = parseFloat(document.getElementById('simRounds').value) || 10;
+            const minStep = parseFloat(document.getElementById('simMinStep').value) || 0.01;
+            const reserve = parseFloat(document.getElementById('simReserve').value) || 0;
+            const sniping = parseFloat(document.getElementById('simSniping').value) || 1;
+
+            log(`🚀 Starting Simulation (${duration}m rounds, ${rounds} total)...`, 'text-blue-400 font-bold');
+
+            try {
+                const res = await fetch(`${API}/simulation/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        roundDuration: duration,
+                        totalRounds: rounds,
+                        botCount: 49,
+                        minBidStep: minStep,
+                        reservePrice: reserve,
+                        antiSnipingWindow: sniping,
+                        antiSnipingExtension: sniping
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    log(`✅ Simulation Active! Bots are now bidding.`, 'text-green-400');
+                    await loadUsers(); // Refresh user list (now containing Player_One)
+                    await loadAuction(data.auction._id);
+                } else {
+                    log(`❌ Error: ${data.error}`, 'text-red-400');
+                }
+            } catch (e) { log(e.message, 'text-red-400'); }
+        }
+
+        async function seedData() {
+            // Deprecated, mapped to startSimulation default
+            startSimulation();
+        }
+
+        async function loadUsers() {
+            const res = await fetch(`${API}/users`);
+            const users = await res.json();
+            const select = document.getElementById('userSelect');
+            select.innerHTML = '';
+            users.forEach(u => {
+                const opt = document.createElement('option');
+                opt.value = u._id;
+                opt.innerText = u.username;
+                select.appendChild(opt);
+            });
+
+            if (users.length && (!currentUser || !users.find(u => u._id === currentUser._id))) {
+                currentUser = users[0];
+            } else if (currentUser) {
+                currentUser = users.find(u => u._id === currentUser._id);
+            }
+            select.value = currentUser?._id;
+            updateUserContext();
+        }
+
+        async function updateUserContext() {
+            const id = document.getElementById('userSelect').value;
+            const res = await fetch(`${API}/users`);
+            const users = await res.json();
+            currentUser = users.find(u => u._id === id);
+
+            if (currentUser) {
+                document.getElementById('balance').innerText = currentUser.wallet.available.toLocaleString();
+                document.getElementById('locked').innerText = currentUser.wallet.locked.toLocaleString();
+                renderInventory();
+                checkMyStatus();
+            }
+        }
+
+        async function loadAuction(id) {
+            if (!id && currentAuction) id = currentAuction._id;
+            if (!id) return;
+            const res = await fetch(`${API}/auction/${id}`);
+            currentAuction = await res.json();
+            updateAuctionUI();
+        }
+
+        function updateAuctionUI() {
+            if (!currentAuction) return;
+
+            // Header Info
+            document.getElementById('auctionTitle').innerText = currentAuction.title;
+            document.getElementById('round-badge').innerText = `ROUND ${currentAuction.roundIndex} / ${currentAuction.totalRounds}`;
+            document.getElementById('status-badge').innerText = currentAuction.status.toUpperCase();
+
+            // Prices
+            document.getElementById('currentPrice').innerText = currentAuction.currentPrice.toLocaleString();
+            document.getElementById('minWinPrice').innerText = currentAuction.minWinPrice.toLocaleString();
+            document.getElementById('minEntryPrice').innerText = currentAuction.minEntryPrice.toLocaleString();
+
+            // Count
+            document.getElementById('participantCount').innerText = `${currentAuction.participants.length} / ${currentAuction.maxParticipants}`;
+
+            renderLeaderboard();
+            checkMyStatus();
+        }
+
+        function renderLeaderboard() {
+            if (!currentAuction) return;
+            const container = document.getElementById('leaderboardList');
+            container.innerHTML = '';
+
+            currentAuction.participants.forEach((p, idx) => {
+                const isMe = currentUser && p.userId === currentUser._id;
+
+                const el = document.createElement('div');
+                el.className = `flex justify-between items-center p-2 rounded text-sm ${isMe ? 'bg-blue-900/50 border border-blue-500' : 'bg-slate-800/50'} ${idx >= currentAuction.maxParticipants ? 'opacity-50' : ''}`;
+
+                el.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="font-mono font-bold text-slate-500 w-6">#${idx + 1}</span>
+                        <span class="font-semibold ${isMe ? 'text-white' : 'text-slate-300'}">${p.username}</span>
+                    </div>
+                    <div class="font-mono text-green-400">$${p.amount}</div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function checkMyStatus() {
+            if (!currentAuction || !currentUser) return;
+            const myBidIdx = currentAuction.participants.findIndex(p => p.userId === currentUser._id);
+            const statusEl = document.getElementById('myStatus');
+
+            if (myBidIdx === -1) {
+                statusEl.className = 'p-3 rounded bg-slate-700 text-center text-sm font-bold text-slate-400';
+                statusEl.innerText = "NOT PARTICIPATING";
+            } else {
+                const rank = myBidIdx + 1;
+                if (rank <= currentAuction.winnersCount) {
+                    statusEl.className = 'p-3 rounded bg-green-600 text-center text-sm font-bold text-white shadow-lg shadow-green-900/50';
+                    statusEl.innerHTML = `🏆 YOU ARE WINNING (#${rank})`;
+                } else if (rank <= currentAuction.maxParticipants) {
+                    statusEl.className = 'p-3 rounded bg-blue-600 text-center text-sm font-bold text-white';
+                    statusEl.innerHTML = `✅ PARTICIPATING (#${rank})`;
+                } else {
+                    statusEl.className = 'p-3 rounded bg-red-600 text-center text-sm font-bold text-white';
+                    statusEl.innerHTML = `⛔ OUT OF BOUNDS (#${rank})`;
+                }
+            }
+        }
+
+        function renderInventory() {
+            const list = document.getElementById('inventoryList');
+            list.innerHTML = '';
+
+            if (!currentUser || !currentUser.inventory || currentUser.inventory.length === 0) {
+                list.innerHTML = '<span class="text-xs text-slate-600 italic">No items won yet.</span>';
+                return;
+            }
+
+            currentUser.inventory.forEach(item => {
+                const el = document.createElement('div');
+                el.className = "flex-shrink-0 w-12 h-12 bg-slate-800 rounded border border-slate-600 flex items-center justify-center text-xl cursor-help";
+                el.title = `${item.name} (Round ${item.roundIndex}) - Bought for $${item.price}`;
+                el.innerText = "🎁";
+                list.appendChild(el);
+            });
+        }
+
+        async function placeBid() {
+            const val = document.getElementById('bidAmount').value;
+            if (!val || !currentUser || !currentAuction) return;
+
+            log(`📤 Bidding $${val}...`, 'text-blue-300');
+            try {
+                const res = await fetch(`${API}/bid`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        auctionId: currentAuction._id,
+                        userId: currentUser._id,
+                        amount: parseFloat(val)
+                    })
+                });
+                const d = await res.json();
+                if (d.success) {
+                    updateUserContext();
+                } else {
+                    log(`⛔ ${d.message}`, 'text-red-400');
+                }
+            } catch (e) {
+                log(`❌ Error: ${e.message}`, 'text-red-500');
+            }
+        }
+
+        // --- Timer ---
+        setInterval(() => {
+            if (!currentAuction) return;
+            const el = document.getElementById('timer');
+            if (currentAuction.status === 'finished') {
+                el.innerText = "FINISHED";
+                el.className = "text-6xl font-mono font-bold text-slate-600 py-4";
+                return;
+            }
+
+            const diff = new Date(currentAuction.endsAt) - new Date();
+            if (diff <= 0) {
+                el.innerText = "00:00:00";
+                return;
+            }
+
+            const m = Math.floor(diff / 60000).toString().padStart(2, '0');
+            const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+            const ms = Math.floor((diff % 1000) / 10).toString().padStart(2, '0');
+            el.innerText = `${m}:${s}:${ms}`;
+
+            if (diff < 30000) el.className = "text-6xl font-mono font-bold text-red-500 py-4";
+            else el.className = "text-6xl font-mono font-bold text-white py-4";
+
+        }, 50);
+
+        // --- Sockets ---
+        socket.on('bid_placed', (d) => {
+            if (currentAuction && d.auctionId === currentAuction._id) {
+                currentAuction.currentPrice = d.newPrice;
+                currentAuction.endsAt = d.endsAt;
+                currentAuction.minEntryPrice = d.minEntry;
+                currentAuction.minWinPrice = d.minWin;
+                loadAuction(d.auctionId);
+                log(`⚡ New Top Bid: $${d.newPrice}`, 'text-green-300');
+            }
+        });
+
+        socket.on('auction_ended', (d) => {
+            if (currentAuction && d.auctionId === currentAuction._id) {
+                log(`🏁 Round ${d.round} Finished!`, 'text-yellow-400 font-bold');
+                loadAuction(d.auctionId); // Show final state
+                updateUserContext();
+            }
+        });
+
+        socket.on('new_round', (d) => {
+            log(`🔄 Starting Round ${d.auction.roundIndex}...`, 'text-blue-400');
+            currentAuction = d.auction;
+            updateAuctionUI();
+        });
+
+        socket.on('notification', (d) => {
+            if (d.type === 'outbid') {
+                log(`⚠️ ${d.message}`, 'text-orange-400 font-bold');
+                // Could trigger a browser notification here
+                if (Notification.permission === "granted") {
+                    new Notification("AuctionRoyale", { body: d.message });
+                }
+            }
+        });
+
+        // Request notification permission
+        if (Notification.permission !== "denied") {
+            Notification.requestPermission();
+        }
+
+        // --- Docs & Utils ---
+        function log(msg, cls = '') {
+            const div = document.createElement('div');
+            div.className = `mb-1 ${cls} border-l-2 border-slate-700 pl-2`;
+            div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            document.getElementById('log').prepend(div);
+        }
+
+        const DOCS = {
+            ws: `### WebSocket Real-Time Architecture\n\nThe system uses **Socket.io** to provide instant bidirectional communication.\n\n- **Events**: 'bid_placed', 'auction_update'\n- **Latency**: < 50ms on local network`,
+
+            mongo: `### MongoDB Replica Set\n\n- **ACID Transactions**: Required for financial integrity (locking funds, updating auction).\n- **WiredTiger Engine**: High performance storage engine.\n- **Strong Consistency**: Reads from primary ensure latest state.`,
+
+            ticker: `### Auction Ticker Service\n\nBackground state machine managing round transitions.\n\n1. Queries for expired auctions.\n2. Processes winners (Top 20).\n3. Refunds losers (Top 21+).\n4. Creates next round automatically.`,
+
+            sniping: `### Anti-Sniping v2\n\nIf a bid is placed in the **last 60 seconds**, the timer extends by **60 seconds**.\n\nThis gives other participants a fair chance to react, similar to eBay style soft-closes.`,
+
+            concurrency: `### Optimistic Concurrency Control\n\nUses \`__v\` version keys to prevent race conditions.\n\n- **Read**: Fetch auction with version v10.\n- **Write**: Update only if version is still v10.\n- **Conflict**: If version changed (concurrent bid), retry or reject.`
+        };
+
+        function showDocs(key) {
+            document.getElementById('docs-content').innerHTML = DOCS[key] ? DOCS[key].replace(/\n/g, '<br>') : 'No documentation found.';
+            document.getElementById('docs-modal').classList.remove('hidden');
+        }
+        function closeDocs() {
+            document.getElementById('docs-modal').classList.add('hidden');
+        }
+    </script>
+</body>
+
+</html>

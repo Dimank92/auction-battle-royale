@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  mongo1:
+    image: mongo:7.0
+    entrypoint:
+      - bash
+      - -c
+      - |
+        openssl rand -base64 756 > /data/replica.key
+        chmod 400 /data/replica.key
+        chown mongodb:mongodb /data/replica.key
+        docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --port 27017 --keyFile /data/replica.key
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=secure_password_123
+    ports:
+      - "127.0.0.1:27017:27017" # Bind to localhost only
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'host.docker.internal:27017'}]}) }" | mongosh --port 27017 -u admin -p secure_password_123 --authenticationDatabase admin --quiet
+      interval: 5s
+      timeout: 2s
+      retries: 20
+    volumes:
+      - mongo1_data:/data/db
+
+volumes:
+  mongo1_data:
