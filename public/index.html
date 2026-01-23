@@ -222,8 +222,13 @@
                             class="bg-slate-800 border border-slate-700 text-white px-2 py-1 w-full rounded focus:border-blue-500 outline-none">
                     </div>
                     <div class="flex items-center gap-2">
-                        <label class="text-slate-500 w-20">Sniping (m)</label>
-                        <input type="number" id="simSniping" value="1"
+                        <label class="text-slate-500 w-20">Snipe Trigg(s)</label>
+                        <input type="number" id="simSnipingWindow" value="60"
+                            class="bg-slate-800 border border-slate-700 text-white px-2 py-1 w-full rounded focus:border-blue-500 outline-none">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-slate-500 w-20">Snipe Add(s)</label>
+                        <input type="number" id="simSnipingExtension" value="60"
                             class="bg-slate-800 border border-slate-700 text-white px-2 py-1 w-full rounded focus:border-blue-500 outline-none">
                     </div>
                     <button onclick="startSimulation()"
@@ -310,7 +315,8 @@
             const rounds = parseFloat(document.getElementById('simRounds').value) || 10;
             const minStep = parseFloat(document.getElementById('simMinStep').value) || 0.01;
             const reserve = parseFloat(document.getElementById('simReserve').value) || 0;
-            const sniping = parseFloat(document.getElementById('simSniping').value) || 1;
+            const snipeWindow = parseFloat(document.getElementById('simSnipingWindow').value) || 60;
+            const snipeAdd = parseFloat(document.getElementById('simSnipingExtension').value) || 60;
 
             log(`🚀 Starting Simulation (${duration}m rounds, ${rounds} total)...`, 'text-blue-400 font-bold');
 
@@ -324,8 +330,8 @@
                         botCount: 49,
                         minBidStep: minStep,
                         reservePrice: reserve,
-                        antiSnipingWindow: sniping,
-                        antiSnipingExtension: sniping
+                        antiSnipingWindowSec: snipeWindow,
+                        antiSnipingExtensionSec: snipeAdd
                     })
                 });
                 const data = await res.json();
@@ -490,7 +496,11 @@
                 if (d.success) {
                     updateUserContext();
                 } else {
-                    log(`⛔ ${d.message}`, 'text-red-400');
+                    log(`⛔ ${d.message}`, 'text-red-500 font-black text-sm bg-red-900/20 py-1');
+                    // Дополнительно покажем визуальный эффект на поле ввода
+                    const input = document.getElementById('bidAmount');
+                    input.classList.add('border-red-500', 'animate-pulse');
+                    setTimeout(() => input.classList.remove('border-red-500', 'animate-pulse'), 2000);
                 }
             } catch (e) {
                 log(`❌ Error: ${e.message}`, 'text-red-500');
@@ -531,7 +541,8 @@
                 currentAuction.minEntryPrice = d.minEntry;
                 currentAuction.minWinPrice = d.minWin;
                 loadAuction(d.auctionId);
-                log(`⚡ New Top Bid: $${d.newPrice}`, 'text-green-300');
+
+                log(`🏆 NEW LEADER: ${d.bidder} ($${d.amount})`, 'text-yellow-400 font-bold');
             }
         });
 

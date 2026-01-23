@@ -18,8 +18,8 @@ const simSchema = z.object({
     botCount: z.number().min(0).default(49),
     minBidStep: z.number().nonnegative().default(0.01),
     reservePrice: z.number().nonnegative().default(0),
-    antiSnipingWindow: z.number().nonnegative().default(1),
-    antiSnipingExtension: z.number().nonnegative().default(1)
+    antiSnipingWindowSec: z.number().nonnegative().default(60),
+    antiSnipingExtensionSec: z.number().nonnegative().default(60)
 });
 
 router.post('/simulation/start', async (req, res) => {
@@ -38,8 +38,8 @@ router.post('/simulation/start', async (req, res) => {
         auction.totalRounds = conf.totalRounds;
         auction.minBidStep = conf.minBidStep;
         auction.reservePrice = conf.reservePrice;
-        auction.antiSnipingWindow = conf.antiSnipingWindow;
-        auction.antiSnipingExtension = conf.antiSnipingExtension;
+        auction.antiSnipingWindowSec = conf.antiSnipingWindowSec;
+        auction.antiSnipingExtensionSec = conf.antiSnipingExtensionSec;
 
         await auction.save();
 

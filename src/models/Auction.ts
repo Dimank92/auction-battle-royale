@@ -37,8 +37,8 @@ export interface IAuction extends Document {
     minWinPrice: number;   // 20th Bid (Win Threshold)
 
     // New Production Fields
-    antiSnipingWindow: number;    // Minutes before end to trigger extension
-    antiSnipingExtension: number; // Minutes to extend
+    antiSnipingWindowSec: number;    // Seconds before end to trigger extension
+    antiSnipingExtensionSec: number; // Seconds to extend
     minBidStep: number;           // Minimum price increase
     reservePrice: number;         // Minimum sell price
     commissionRate: number;       // Platform fee (e.g. 0.05 for 5%)
@@ -78,8 +78,8 @@ const AuctionSchema: Schema = new Schema({
     minWinPrice: { type: Number, default: 0 },
 
     // Production Config Defaults
-    antiSnipingWindow: { type: Number, default: 1 }, // 1 minute
-    antiSnipingExtension: { type: Number, default: 1 }, // 1 minute
+    antiSnipingWindowSec: { type: Number, default: 60 }, // 60 seconds
+    antiSnipingExtensionSec: { type: Number, default: 60 }, // 60 seconds
     minBidStep: { type: Number, default: 0.01 }, // Allows your 1 penny default
     reservePrice: { type: Number, default: 0 },
     commissionRate: { type: Number, default: 0.05 }, // 5%

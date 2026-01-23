@@ -3,6 +3,8 @@ import { connectDB } from '../infra/db';
 import Auction, { AuctionStatus } from '../models/Auction';
 import { AuctionService } from './AuctionService';
 import { io } from '../app';
+import User from '../models/User';
+import Transaction from '../models/Transaction';
 
 export class AuctionTicker {
     private service: AuctionService;
@@ -64,7 +66,7 @@ export class AuctionTicker {
                         console.log(`⚠️ Auction ${auction._id} cancelled: Reserve price not met (${topBid} < ${auction.reservePrice})`);
                         // Refund EVERYONE (including "winners")
                         for (const p of auction.participants) {
-                            const user = await mongoose.model('User').findById(p.userId).session(session);
+                            const user = await User.findById(p.userId).session(session);
                             if (user) {
                                 user.wallet.locked -= p.amount;
                                 user.wallet.available += p.amount;
@@ -74,7 +76,7 @@ export class AuctionTicker {
                     } else {
                         // Process Winners (Burn Funds + Give Item + Pay Seller)
                         for (const w of winners) {
-                            const user = await mongoose.model('User').findById(w.userId).session(session);
+                            const user = await User.findById(w.userId).session(session);
                             if (user) {
                                 user.wallet.locked -= w.amount;
 
@@ -83,7 +85,7 @@ export class AuctionTicker {
                                 const proceeds = w.amount - commission;
 
                                 // Record Payment Transaction
-                                await mongoose.model('Transaction').create([{
+                                await Transaction.create([{
                                     userId: user._id,
                                     type: 'payment',
                                     amount: w.amount,
@@ -92,7 +94,7 @@ export class AuctionTicker {
 
                                 // Pay Seller if exists
                                 if (auction.sellerId) {
-                                    const seller = await mongoose.model('User').findById(auction.sellerId).session(session);
+                                    const seller = await User.findById(auction.sellerId).session(session);
                                     if (seller) {
                                         seller.wallet.available += proceeds;
                                         await seller.save({ session });
@@ -112,10 +114,11 @@ export class AuctionTicker {
 
                         // Process Losers (Refund)
                         for (const l of losers) {
-                            const user = await mongoose.model('User').findById(l.userId).session(session);
+                            const user = await User.findById(l.userId).session(session);
                             if (user) {
                                 user.wallet.locked -= l.amount;
                                 user.wallet.available += l.amount;
+                                await user.save({ session });
                             }
                         }
                     }
@@ -136,7 +139,8 @@ export class AuctionTicker {
                         const nextRound = await this.service.createAuction(
                             auction.title,
                             auction.startPrice,
-                            duration
+                            duration,
+                            auction // Pass existing auction as config
                         );
 
                         nextRound.roundIndex = auction.roundIndex + 1;

@@ -22,8 +22,8 @@ export class BotService {
 
         console.log(`🤖 BotService Started. Loaded ${this.bots.length} bots.`);
 
-        // Loop every 2 seconds
-        this.intervalId = setInterval(() => this.tick(), 2000);
+        // Loop every 5 seconds for video demo readability
+        this.intervalId = setInterval(() => this.tick(), 5000);
     }
 
     stop() {
@@ -51,8 +51,8 @@ export class BotService {
                 return;
             }
 
-            // 2. Pick 3-5 random bots to act this tick
-            const actionCount = Math.floor(Math.random() * 3) + 3; // 3 to 5 bots
+            // 2. Pick 1-2 random bots to act this tick
+            const actionCount = Math.floor(Math.random() * 2) + 1; // 1 to 2 bots
             const shuffled = [...this.bots].sort(() => 0.5 - Math.random());
             const activeBots = shuffled.slice(0, actionCount);
 
@@ -78,26 +78,11 @@ export class BotService {
         // 30% chance to skip if already participating (laziness/strategy)
         if (isWinning && Math.random() > 0.7) return;
 
-        const currentMin = auction.minEntryPrice || auction.participants[auction.participants.length - 1]?.amount || 0;
+        const step = auction.minBidStep || 0;
         const currentTop = auction.currentPrice;
 
-        // Determine Bid
-        // Aggressive bots might top the leader
-        // Passive bots just want to get in (MinEntry + tiny)
-
-        const isAggressive = Math.random() > 0.8;
-
-        let bidAmount = 0;
-        if (isAggressive) {
-            bidAmount = Math.ceil(currentTop * (1.05 + Math.random() * 0.1)); // Beat top by 5-15%
-        } else {
-            bidAmount = Math.ceil(currentMin * (1.01 + Math.random() * 0.05)); // Beat min by 1-5%
-        }
-
-        // Ensure strictly greater than current min entry if full (Service handles logic, but let's be smart)
-        if (bidAmount <= currentMin && auction.participants.length >= auction.maxParticipants) {
-            bidAmount = Math.ceil(currentMin * 1.02);
-        }
+        // Strategy: Always beat the current top leader
+        let bidAmount = Math.ceil(currentTop + step + (Math.random() * step * 5));
 
         // Sanity: Don't bid more than wallet
         // But for simulation, let's assume they have "infinite" or autorefill? 
@@ -109,8 +94,7 @@ export class BotService {
         }
 
         try {
-            await this.auctionService.placeBid(this.activeAuctionId!, bot._id.toString(), bidAmount);
-            // console.log(`🤖 ${bot.username} bid ${bidAmount}`);
+            await this.auctionService.placeBid(this.activeAuctionId!, bot._id.toString(), Math.round(bidAmount));
         } catch (e: any) {
             // Ignore "Bid too low" etc.
         }

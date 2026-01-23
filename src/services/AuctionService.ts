@@ -27,19 +27,11 @@ export class AuctionService {
             // 2. Validate Bid
             // If full, must beat the last person
             const isFull = auction.participants.length >= auction.maxParticipants;
-            const minEntry = isFull ? auction.participants[auction.participants.length - 1].amount : 0;
+            const step = auction.minBidStep || 0;
+            const minToBeatTop = (auction.currentPrice || auction.startPrice) + step;
 
-            // Logic: Your bid must be at least minBidStep higher than the current leader (if you want to be leader)
-            // or at least minBidStep higher than the floor (to enter/stay).
-            // Special case: First bid must be >= startPrice + minBidStep (as per user test case expectation)
-            // Actually, usually it's just >= startPrice, but if user wants "increase", we'll enforce it.
-
-            const requirement = auction.participants.length > 0
-                ? minEntry + auction.minBidStep
-                : auction.startPrice + auction.minBidStep;
-
-            if (amount < requirement) {
-                throw new Error(`Bid must be at least ${requirement} (Current threshold ${minEntry} + Step ${auction.minBidStep})`);
+            if (amount < minToBeatTop) {
+                throw new Error(`Invalid bid. Every bid must beat the current leader. Minimum required: $${minToBeatTop}.`);
             }
             // Basic balance check
             if (user.wallet.available < amount) {
@@ -124,12 +116,12 @@ export class AuctionService {
             // 6. Anti-Sniping Logic
             const now = new Date();
             const timeRemainingMs = auction.endsAt.getTime() - now.getTime();
-            const windowMs = (auction.antiSnipingWindow || 1) * 60 * 1000;
+            const windowMs = (auction.antiSnipingWindowSec || 0) * 1000;
 
             if (timeRemainingMs > 0 && timeRemainingMs < windowMs) {
-                const extensionMs = (auction.antiSnipingExtension || 1) * 60 * 1000;
+                const extensionMs = (auction.antiSnipingExtensionSec || 0) * 1000;
                 auction.endsAt = new Date(auction.endsAt.getTime() + extensionMs);
-                console.log(`⏳ Anti-sniping: Auction ${auction._id} extended by ${auction.antiSnipingExtension}m`);
+                console.log(`⏳ Anti-sniping: Auction ${auction._id} extended by ${auction.antiSnipingExtensionSec}s`);
             }
 
             await auction.save({ session });
@@ -140,10 +132,14 @@ export class AuctionService {
             // 8. Event
             const { io } = require('../app');
             if (io) {
+                const rank = auction.participants.findIndex(p => p.userId.toString() === userId) + 1;
                 io.emit('bid_placed', {
                     auctionId: auction._id,
                     newPrice: auction.currentPrice,
                     leader: auction.participants[0].username,
+                    bidder: user.username,
+                    amount: amount,
+                    rank: rank,
                     participantsCount: auction.participants.length,
                     endsAt: auction.endsAt,
                     minEntry: auction.minEntryPrice,
@@ -173,7 +169,7 @@ export class AuctionService {
         }
     }
 
-    async createAuction(title: string, startPrice: number, durationMinutes: number) {
+    async createAuction(title: string, startPrice: number, durationMinutes: number, config: Partial<IAuction> = {}) {
         const endsAt = new Date(Date.now() + durationMinutes * 60 * 1000);
         return await Auction.create({
             title,
@@ -186,7 +182,16 @@ export class AuctionService {
             roundIndex: 1,
             totalRounds: 50,
             participants: [],
-            durationMinutes
+            durationMinutes,
+            // Inherit config
+            maxParticipants: config.maxParticipants || 1000,
+            winnersCount: config.winnersCount || 20,
+            minBidStep: config.minBidStep || 0.01,
+            reservePrice: config.reservePrice || 0,
+            antiSnipingWindowSec: config.antiSnipingWindowSec || 60,
+            antiSnipingExtensionSec: config.antiSnipingExtensionSec || 60,
+            commissionRate: config.commissionRate || 0.05,
+            sellerId: config.sellerId
         });
     }
 }
